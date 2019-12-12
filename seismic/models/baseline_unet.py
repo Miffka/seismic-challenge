@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from torchvision.models import resnet34
 
+from seismic.models.layers import (DecoderSEBlockV2, ConvRelu)
+
 class UnetResnet34(nn.Module):
     def __init__(self, num_classes=1, num_filters=16, pretrained=True):
         super().__init__()

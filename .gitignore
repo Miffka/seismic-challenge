@@ -104,3 +104,4 @@ runs/
 env.docker
 *.out
 /submissions/
+/papers/
