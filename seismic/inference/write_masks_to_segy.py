@@ -52,14 +52,15 @@ def predict_mask(image, model, dims=3, size=394, step=192, batch_size=8,
     merger = CudaTileMerger(tiler.target_shape, 1, tiler.weight)
 
     # Run predictions for tiles and accumulate them
-    for tiles_batch, coords_batch in DataLoader(list(zip(tiles, tiler.crops)),
-                                                batch_size=batch_size, pin_memory=True):
-#         print(tiles_batch.shape)
-        tiles_batch = tiles_batch.float().cuda()
-        pred_batch = model(tiles_batch)
-        pred_mask = pred_batch.max(dim=1)[1].float()
+    with torch.no_grad():
+        for tiles_batch, coords_batch in DataLoader(list(zip(tiles, tiler.crops)),
+                                                    batch_size=batch_size, pin_memory=True):
+    #         print(tiles_batch.shape)
+            tiles_batch = tiles_batch.float().cuda()
+            pred_batch = model(tiles_batch)
+            pred_mask = pred_batch.max(dim=1)[1].float()
 
-        merger.integrate_batch(pred_mask, coords_batch)
+            merger.integrate_batch(pred_mask, coords_batch)
 
     # Normalize accumulated mask and convert back to numpy
     merged_mask = np.moveaxis(to_numpy(merger.merge()), 0, -1).astype(np.uint8)
@@ -185,7 +186,7 @@ def main():
             spec.xlines = src.xlines
             with segyio.create(dstpath, spec) as dst:
                 dst.text[0] = src.text[0]
-                
+
                 print('Start generating iline masks...')
                 for iline_num in tqdm.tqdm(spec.ilines):
                     image = src.iline[iline_num].T
