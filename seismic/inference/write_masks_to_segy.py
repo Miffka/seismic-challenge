@@ -5,6 +5,8 @@ import pandas as pd
 import segyio
 import tqdm
 from joblib import Parallel, delayed
+import matplotlib.pyplot as plt
+
 import os
 import os.path as osp
 
@@ -29,7 +31,8 @@ def get_segy_info(filename):
     return n_traces, sample_rate, n_samples, twt
 
 
-def predict_mask(image, model, dims=3, size=394, step=192, batch_size=8, plot_image=False, dstdir=None, img_name='image1.png'):
+def predict_mask(image, model, dims=3, size=394, step=192, batch_size=8,
+                 plot_image=False, dstdir=None, img_name='image1.png'):
     if image.ndim == 2:
         image = np.expand_dims(image, 2)
     if image.shape[-1] != dims:
@@ -62,13 +65,13 @@ def predict_mask(image, model, dims=3, size=394, step=192, batch_size=8, plot_im
     merged_mask = np.moveaxis(to_numpy(merger.merge()), 0, -1).astype(np.uint8)
     merged_mask = tiler.crop_to_orignal_size(merged_mask)
 
-    print(np.unique(merged_mask))
-    if show_mask:
+    if plot_image:
         assert dstdir is not None, 'dstdir should be passed'
         fig, ax = plt.subplots(ncols=2,figsize=(20,10))
         ax[0].imshow(image[:,:,0], cmap='gray')
-        ax[1].imshow(merged_mask[:,:,0], alpha=0.2)
+        ax[1].imshow(merged_mask[:,:,0], alpha=0.3)
         fig.savefig(osp.join(dstdir, img_name), bbox_inches='tight', pad_inches=0)
+        print(osp.join(dstdir, img_name))
     return merged_mask
 
 
@@ -116,7 +119,9 @@ def parse_args():
     return args
 
 
-def main(args):
+def main():
+    args = parse_args()
+
     os.makedirs(args.dstdir, exist_ok=True)
 
     if args.model_arch == 'baseline_patch_deconvnet':
@@ -132,7 +137,7 @@ def main(args):
         step = 192
         batch_size = 8
     else:
-        raise NotImplementedError()'Only baseline_patch_deconvnet and baseline_rosneft archs are currently supported')
+        raise NotImplementedError('Only baseline_patch_deconvnet and baseline_rosneft archs are currently supported')
 
     model.eval()
     model.to(config.device)
@@ -155,18 +160,19 @@ def main(args):
         inline_idx = segyfile_full.ilines[i]
         inline_img = segyfile_full.iline[inline_idx].T
         print('Shape of the iline_img', inline_img.shape)
-        inline_img = inline_img.T
+        print('Starting inference for iline image...')
 
         mask = predict_mask(inline_img, model, dims=dims, size=size, step=step, batch_size=batch_size,
-                            dstdir=args.dstdir, img_name=f'inline{inline_idx}.png')
+                            plot_image=True, dstdir=args.dstdir, img_name=f'inline{inline_idx}.png')
 
         xline_idx = segyfile_full.xlines[i]
-        xline_img = segyfile_full.xline[inline_idx].T
+        xline_img = segyfile_full.xline[xline_idx].T
         print('Shape of the xline_img', xline_img.shape)
+        print('Starting inference of xline image...')
 
         mask = predict_mask(xline_img, model, dims=dims, size=size, step=step, batch_size=batch_size,
-                            dstdir=args.dstdir, img_name=f'xline{xline_idx}.png')
-        print(f'Plots are saved in {dstdir}')
+                            plot_image=True, dstdir=args.dstdir, img_name=f'xline{xline_idx}.png')
+        print(f'Plots are saved in {args.dstdir}')
 
     else:
         dstpath = osp.join()
@@ -179,12 +185,14 @@ def main(args):
             spec.xlines = src.xlines
             with segyio.create(dstpath, spec) as dst:
                 dst.text[0] = src.text[0]
+                
                 print('Start generating iline masks...')
                 for iline_num in tqdm.tqdm(spec.ilines):
                     image = src.iline[iline_num].T
                     mask = predict_mask(iline_full_trn_cut, model_rosneft, dims=3, size=384, step=192)
                     dst.iline[iline_num] = mask
                 print('Iline masks successfully generated!')
+
                 print('Start generating xline masks...')
                 for xline_num in tqdm.tqdm(spec.xlines):
                     image = src.xline[iline_num].T
@@ -193,3 +201,6 @@ def main(args):
                 print('Xline masks successfully generated!')
 
         print('All done')
+
+if __name__ == '__main__':
+    main()
