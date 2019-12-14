@@ -46,6 +46,7 @@ class UnetResnet34(nn.Module):
             encoder_results.append(x.clone())
 
         x = self.center(self.pool(x))
+        # x = self.center(x)
 
         for i, decoder in enumerate(self.decoder):
             x = self.decoder[i](torch.cat([x, encoder_results[-i - 1]], 1))
