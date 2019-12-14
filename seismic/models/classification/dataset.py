@@ -7,29 +7,14 @@ import pandas as pd
 
 import mat4py
 from torch.utils.data import Dataset
-
-def array_freqhist_bins(img, n_bins=100):
-    imsd = np.sort(img.flatten())
-    t = np.array([0.001])
-    t = np.append(t, np.arange(n_bins) / n_bins + (1 / 2 / n_bins))
-    t = np.append(t, 0.999)
-    t = (len(imsd) * t + 0.5).astype(np.int)
-    return np.unique(imsd[t])
-
-
-def scale_img(img, brks=None):
-    if brks is None:
-        brks = array_freqhist_bins(img)
-    ys = np.linspace(0., 1., len(brks))
-    x = np.interp(img.flatten(), brks, ys)
-    return x.reshape(img.shape).clip(0, 1.0)
+from seismic.models.classification.transform import scale_img
 
 
 class FaciesDataset(Dataset):
     """Facies dataset"""
 
     def __init__(self, images_path, imagesinfo_path, class_name_to_id, preprocess=None, augmentation=None, transform=None,
-                 test_mode=False, test_size=40):
+                 scale_image=False, test_mode=False, test_size=40):
         """
         Args:
             images_path     (str) : a path to a folder with images;
@@ -41,6 +26,7 @@ class FaciesDataset(Dataset):
                                     required transformations are:
                                         1) transforms.ToTensor(),
                                         2) transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225));
+            scale_image     (bool): whether to scale image (Jeremy scaling)
             test_mode       (bool): whether to use only first test_size images from dataset;
             test_size       (int): how many images to use in test_mode;
         """
@@ -52,6 +38,7 @@ class FaciesDataset(Dataset):
         self.preprocess = preprocess
         self.augmentation = augmentation
         self.transform = transform
+        self.scale_image = scale_image
         if test_mode:
             self.images_info = self.images_info.iloc[:test_size]
             self.labels = self.labels[:test_size]
@@ -70,7 +57,9 @@ class FaciesDataset(Dataset):
         image = np.asarray(mat['img'])
         if image.ndim == 2:
             image = np.repeat(np.expand_dims(image, 2), 3, axis=2)
-        image = scale_img(image).astype(np.float32)
+        if self.scale_image:
+            image = scale_img(image)
+        image = image.astype(np.float32)
 
         if self.preprocess:
             image = self.preprocess(image=image)['image']

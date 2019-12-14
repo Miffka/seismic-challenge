@@ -160,6 +160,8 @@ if __name__ == "__main__":
                         help='path to a validation set markup file')
     parser.add_argument('--augmentation_intensity', type=str, default=None,
                         help='augmentation type: None, light, medium, heavy')
+    parser.add_argument('--scale_image', action='store_true',
+                        help='whether to use Jeremy scaling')
     parser.add_argument('--num_workers', type=int, default=2, help='num workers for data loader')
     parser.add_argument('--test_mode', dest='test_mode', action='store_true',
                         help='whether to use only small sample of datasets')
@@ -194,7 +196,8 @@ if __name__ == "__main__":
     model_save_path = osp.join(args.model_save_path, args.model, current_time)
     os.makedirs(model_save_path, exist_ok=True)
 
-    writer.add_text('CNN', str(args.__dict__), 0)
+    for k, v in args.__dict__.items():
+        writer.add_text('CNN', f'{k}: {v}', 0)
 
     random.seed(args.random_state)
     os.environ['PYTHONHASHSEED'] = str(args.random_state)
@@ -223,9 +226,9 @@ if __name__ == "__main__":
 
     ### Data loading ###
     dataset_train = FaciesDataset(data_dir, train_file, landmass_config.class_name_to_id, preprocess=preprocess, transform=transform,
-                                 augmentation=augmentation, test_mode=args.test_mode, test_size=args.test_size)
+                                 augmentation=augmentation, scale_image=args.scale_image, test_mode=args.test_mode, test_size=args.test_size)
     dataset_val = FaciesDataset(data_dir, val_file, landmass_config.class_name_to_id, preprocess=preprocess, transform=transform,
-                                 augmentation=None, test_mode=args.test_mode, test_size=args.test_size)
+                                 augmentation=None, scale_image=args.scale_image, test_mode=args.test_mode, test_size=args.test_size)
     train_idx = np.arange(len(dataset_train))
     valid_idx = np.arange(len(dataset_val))
 
