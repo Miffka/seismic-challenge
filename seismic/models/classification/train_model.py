@@ -134,7 +134,7 @@ def train_net(net, train_loader, val_loader, device, optimizer, model_save_path=
                 best_val_accuracy = val_stat['accuracy']
                 best_net = copy.deepcopy(net)
 
-            torch.save(state, os.path.join(model_save_path, f"model_epoch_{epoch}.pkl"))
+            torch.save(state, os.path.join(model_save_path, f"model.pkl"))
             writer.add_text('CNN', 'Saving model (epoch %d)' % (epoch + 1), 0)
 
     print('Finished Training')
