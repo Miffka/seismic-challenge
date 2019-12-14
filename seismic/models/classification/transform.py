@@ -6,17 +6,8 @@ from albumentations import (
 from seismic.config import config
 
 
-def get_preprocessing():
-    resize = face_config.face_size
-    p_resize = 1.0
-
-    preprocess = Compose([Resize(resize, resize, p=p_resize, interpolation=cv2.INTER_CUBIC)])
-    return preprocess
-
-
-def get_augmentations(augmentation_intensity=None, sceptical_augmentation=False):
-    resize = 99
-    crop_limits = (int(resize * 0.85), resize)
+def get_augmentations(augmentation_intensity=None, sceptical_augmentation=False, resize=(99,99)):
+    crop_limits = (int(resize[0] * 0.85), resize[0])
 
     if augmentation_intensity == 'light':
         p_augment = 0.25
@@ -55,8 +46,8 @@ def get_augmentations(augmentation_intensity=None, sceptical_augmentation=False)
             OneOf([Blur(p=1.0), GaussianBlur(p=1.0)], p=p_blur),
             CoarseDropout(max_height=24, max_width=24, p=p_dropout),
             RandomSizedCrop(min_max_height=crop_limits,
-                            height=resize,
-                            width=resize,
+                            height=resize[0],
+                            width=resize[1],
                             w2h_ratio=1.0,
                             interpolation=cv2.INTER_CUBIC,
                             p=p_crop)
@@ -77,8 +68,8 @@ def get_augmentations(augmentation_intensity=None, sceptical_augmentation=False)
             HorizontalFlip(p=p_flip),
             VerticalFlip(p=p_flip),
             RandomSizedCrop(min_max_height=crop_limits,
-                            height=resize,
-                            width=resize,
+                            height=resize[0],
+                            width=resize[1],
                             w2h_ratio=1.0,
                             interpolation=cv2.INTER_CUBIC,
                             p=p_crop)
